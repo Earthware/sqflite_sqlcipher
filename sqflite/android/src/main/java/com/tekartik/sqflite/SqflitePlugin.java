@@ -50,12 +50,14 @@ import static com.tekartik.sqflite.Constant.METHOD_QUERY;
 import static com.tekartik.sqflite.Constant.METHOD_UPDATE;
 import static com.tekartik.sqflite.Constant.PARAM_CMD;
 import static com.tekartik.sqflite.Constant.PARAM_ID;
+import static com.tekartik.sqflite.Constant.PARAM_IN_TRANSACTION;
 import static com.tekartik.sqflite.Constant.PARAM_LOG_LEVEL;
 import static com.tekartik.sqflite.Constant.PARAM_OPERATIONS;
 import static com.tekartik.sqflite.Constant.PARAM_PASSWORD;
 import static com.tekartik.sqflite.Constant.PARAM_PATH;
 import static com.tekartik.sqflite.Constant.PARAM_READ_ONLY;
 import static com.tekartik.sqflite.Constant.PARAM_RECOVERED;
+import static com.tekartik.sqflite.Constant.PARAM_RECOVERED_IN_TRANSACTION;
 import static com.tekartik.sqflite.Constant.PARAM_SINGLE_INSTANCE;
 import static com.tekartik.sqflite.Constant.PARAM_SQL;
 import static com.tekartik.sqflite.Constant.PARAM_SQL_ARGUMENTS;
@@ -231,35 +233,41 @@ public class SqflitePlugin implements MethodCallHandler {
 
     private Database executeOrError(Database database, MethodCall call, Result result) {
         SqlCommand command = getSqlCommand(call);
-        return executeOrError(database, command, result);
+        Boolean inTransaction = call.argument(PARAM_IN_TRANSACTION);
+
+        Operation operation = new ExecuteOperation(result, command, inTransaction);
+        if (executeOrError(database, operation)) {
+            return database;
+        }
+        return null;
     }
 
+    // Called during batch, warning duplicated code!
     private boolean executeOrError(Database database, Operation operation) {
         SqlCommand command = operation.getSqlCommand();
         if (LogLevel.hasSqlLevel(database.logLevel)) {
             Log.d(TAG, "[" + database.getThreadLogTag() + "] " + command);
         }
+        Boolean inTransaction = operation.getInTransaction();
+
         try {
             database.getWritableDatabase().execSQL(command.getSql(), command.getSqlArguments());
+
+            // Success handle inTransaction change
+            if (Boolean.TRUE.equals(inTransaction)) {
+                database.inTransaction = true;
+            }
             return true;
         } catch (Exception exception) {
             handleException(exception, operation, database);
             return false;
-        }
-    }
+        } finally {
+            // failure? ignore for false
+            if (Boolean.FALSE.equals(inTransaction)) {
+                database.inTransaction = false;
+            }
 
-    private Database executeOrError(Database database, SqlCommand command, Result result) {
-        if (LogLevel.hasSqlLevel(database.logLevel)) {
-            Log.d(TAG, "[" + database.getThreadLogTag() + "] " + command);
         }
-        try {
-            database.getWritableDatabase().execSQL(command.getSql(), command.getSqlArguments());
-        } catch (Exception exception) {
-            Operation operation = new ExecuteOperation(result, command);
-            handleException(exception, operation, database);
-            return null;
-        }
-        return database;
     }
 
     //
@@ -529,6 +537,8 @@ public class SqflitePlugin implements MethodCallHandler {
             @Override
             public void run() {
 
+                Boolean inTransaction;
+
                 if (executeOrError(database, call, bgResult) == null) {
                     return;
                 }
@@ -608,11 +618,14 @@ public class SqflitePlugin implements MethodCallHandler {
     // 'id': xxx
     // 'recovered': true // if recovered only for single instance
     // }
-    static Map makeOpenResult(int databaseId, boolean recovered) {
+    static Map makeOpenResult(int databaseId, boolean recovered, boolean recoveredInTransaction) {
         Map<String, Object> result = new HashMap<>();
         result.put(PARAM_ID, databaseId);
         if (recovered) {
             result.put(PARAM_RECOVERED, true);
+        }
+        if (recoveredInTransaction) {
+            result.put(PARAM_RECOVERED_IN_TRANSACTION, true);
         }
         return result;
     }
@@ -700,9 +713,10 @@ public class SqflitePlugin implements MethodCallHandler {
                             }
                         } else {
                             if (LogLevel.hasVerboseLevel(logLevel)) {
-                                Log.d(Constant.TAG, "[" + Thread.currentThread() + "] re-opened single instance " + databaseId + " " + path);
+                                Log.d(Constant.TAG, "[" + Thread.currentThread() +
+                                        "] re-opened single instance " + (database.inTransaction ? "(in transaction) " : "") + databaseId + " " + path);
                             }
-                            result.success(makeOpenResult(databaseId, true));
+                            result.success(makeOpenResult(databaseId, true, database.inTransaction));
                             return;
                         }
                     }
@@ -781,7 +795,7 @@ public class SqflitePlugin implements MethodCallHandler {
                                 }
                             }
 
-                            bgResult.success(makeOpenResult(databaseId, false));
+                            bgResult.success(makeOpenResult(databaseId, false, false));
                         }
 
                     });

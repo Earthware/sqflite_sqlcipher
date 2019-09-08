@@ -178,11 +178,11 @@ abstract class Database implements DatabaseExecutor {
       [List<dynamic> arguments]);
 }
 
-typedef FutureOr<void> OnDatabaseVersionChangeFn(
+typedef OnDatabaseVersionChangeFn = FutureOr<void> Function(
     Database db, int oldVersion, int newVersion);
-typedef FutureOr<void> OnDatabaseCreateFn(Database db, int version);
-typedef FutureOr<void> OnDatabaseOpenFn(Database db);
-typedef FutureOr<void> OnDatabaseConfigureFn(Database db);
+typedef OnDatabaseCreateFn = FutureOr<void> Function(Database db, int version);
+typedef OnDatabaseOpenFn = FutureOr<void> Function(Database db);
+typedef OnDatabaseConfigureFn = FutureOr<void> Function(Database db);
 
 /// to specify during [openDatabase] for [onDowngrade]
 /// Downgrading will always fail
@@ -226,14 +226,33 @@ abstract class OpenDatabaseOptions {
         singleInstance: singleInstance);
   }
 
+  /// Specify the expected version.
   int version;
+
+  /// called right after opening the database.
   OnDatabaseConfigureFn onConfigure;
+
+  /// Called when the database is created.
   OnDatabaseCreateFn onCreate;
+
+  /// Called when the database is upgraded.
   OnDatabaseVersionChangeFn onUpgrade;
+
+  /// Called when the database is downgraded.
+  ///
+  /// Use [onDatabaseDowngradeDelete] for re-creating the database
   OnDatabaseVersionChangeFn onDowngrade;
+
+  /// Called after all other callbacks have been called.
   OnDatabaseOpenFn onOpen;
+
+  /// Password used for encrypting the database.
   String password;
+
+  /// Open the database in read-only mode (no callback called).
   bool readOnly;
+
+  /// The existing single-instance (hot-restart)
   bool singleInstance;
 }
 

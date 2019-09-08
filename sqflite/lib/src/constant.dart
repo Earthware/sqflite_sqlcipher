@@ -31,14 +31,20 @@ const String paramErrorData = "data";
 
 // Result for open if a single instance was recovered from the native world
 const String paramRecovered = "recovered";
+// Result for open if a single instance was recovered from the native world while in a transaction
+const String paramRecoveredInTransaction = "recoveredInTransaction";
 // The database path (string)
 const String paramPath = "path";
+// The database instance name (string)
+const String paramName = "name";
 // The database version (int)
 const String paramVersion = "version";
 // The database id (int)
 const String paramId = "id";
 // When opening the database (String) (optional)
 const String paramPassword = "password";
+// True if the database is in a transaction
+const String paramInTransaction = "inTransaction";
 // When opening the database (bool)
 const String paramReadOnly = "readOnly";
 // When opening the database (bool)

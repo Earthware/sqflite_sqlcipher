@@ -1,6 +1,7 @@
 package com.tekartik.sqflite;
 
 import android.content.Context;
+import android.database.DatabaseErrorHandler;
 import android.util.Log;
 
 import net.sqlcipher.database.SQLiteDatabase;
@@ -15,6 +16,8 @@ class Database {
     final int id;
     final int logLevel;
     SQLiteDatabase sqliteDatabase;
+    boolean inTransaction;
+
 
     Database(String path, String password, int id, boolean singleInstance, int logLevel) {
         this.path = path;
@@ -30,16 +33,15 @@ class Database {
 
     }
 
+    // Change default error handler to avoid erasing the existing file.
     public void openReadOnly() {
         openWithFlags(SQLiteDatabase.OPEN_READONLY);
     }
 
     private void openWithFlags(int flags){
         try {
-
             sqliteDatabase = SQLiteDatabase.openDatabase(path, password, null, flags, null);
-
-        }catch (Exception e) {
+        } catch (Exception e) {
             Log.d(TAG, "Opening db in " + path + " with PRAGMA cipher_migrate");
             SQLiteDatabaseHook hook = new SQLiteDatabaseHook() {
                 @Override
