@@ -1,7 +1,7 @@
 import 'package:path/path.dart';
 import 'package:pedantic/pedantic.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:sqflite_example/utils.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
+import 'package:sqflite_sqlcipher_example/utils.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -35,7 +35,7 @@ void main() {
       var db = await factory.openDatabase(path,
           options: OpenDatabaseOptions(version: 1));
       try {
-        await db.execute("BEGIN TRANSACTION");
+        await db.execute('BEGIN TRANSACTION');
         await db.close();
 
         db = await factory.openDatabase(path,
@@ -50,7 +50,7 @@ void main() {
     /// An empty file is a valid empty sqlite file
     Future<bool> isDatabase(String path) async {
       Database db;
-      bool isDatabase = false;
+      var isDatabase = false;
       try {
         db = await openReadOnlyDatabase(path);
         var version = await db.getVersion();
@@ -99,17 +99,13 @@ void main() {
       await Directory(dirname(fullPath)).create(recursive: true);
       await File(fullPath).writeAsString('test');
 
-      // Open is fine, that is the native behavior
-      var db = await openReadOnlyDatabase(fullPath);
       expect(await File(fullPath).readAsString(), 'test');
       try {
-        var version = await db.getVersion();
-        print(await db.query('sqlite_master'));
-        fail('getVersion should fail ${db?.path} ${version}');
+        var db = await openReadOnlyDatabase(fullPath);
+        await db.close();
       } on DatabaseException catch (_) {
-        // Android: DatabaseException(file is not a database (code 26 SQLITE_NOTADB)) sql 'PRAGMA user_version' args []}
+        // Android: DatabaseException(file is not a database)
       }
-      await db.close();
       expect(await File(fullPath).readAsString(), 'test');
 
       expect(await isDatabase(fullPath), isFalse);
@@ -120,23 +116,23 @@ void main() {
 
     test('multiple database', () async {
       //await Sqflite.devSetDebugModeOn(true);
-      int count = 10;
+      var count = 10;
       var dbs = List<Database>(count);
-      for (int i = 0; i < count; i++) {
+      for (var i = 0; i < count; i++) {
         var path = 'test_multiple_$i.db';
         await deleteDatabase(path);
         dbs[i] =
             await openDatabase(path, version: 1, onCreate: (db, version) async {
           await db
-              .execute("CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)");
+              .execute('CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT)');
           expect(
               await db
-                  .rawInsert("INSERT INTO Test (name) VALUES (?)", ['test_$i']),
+                  .rawInsert('INSERT INTO Test (name) VALUES (?)', ['test_$i']),
               1);
         });
       }
 
-      for (int i = 0; i < count; i++) {
+      for (var i = 0; i < count; i++) {
         var db = dbs[i];
         try {
           var name = (await db.query('Test', columns: ['name']))
@@ -149,7 +145,7 @@ void main() {
         }
       }
 
-      for (int i = 0; i < count; i++) {
+      for (var i = 0; i < count; i++) {
         var db = dbs[i];
         await db.close();
       }
@@ -197,6 +193,44 @@ void main() {
         ]);
       } finally {
         await db.close();
+      }
+    });
+
+    test('indexed_param', () async {
+      final db = await openDatabase(':memory:');
+      expect(await db.rawQuery('SELECT ?1 + ?2', [3, 4]), [
+        {'?1 + ?2': 7}
+      ]);
+      await db.close();
+    });
+
+    test('deleteDatabase', () async {
+      // await devVerbose();
+      Database db;
+      try {
+        var path = 'test_delete_database.db';
+        await deleteDatabase(path);
+        db = await openDatabase(path);
+        expect(await db.getVersion(), 0);
+        await db.setVersion(1);
+
+        // delete without closing every time
+        await deleteDatabase(path);
+        db = await openDatabase(path);
+        expect(await db.getVersion(), 0);
+        await db.execute('BEGIN TRANSACTION');
+        await db.setVersion(2);
+
+        await deleteDatabase(path);
+        db = await openDatabase(path);
+        expect(await db.getVersion(), 0);
+        await db.setVersion(3);
+
+        await deleteDatabase(path);
+        db = await openDatabase(path);
+        expect(await db.getVersion(), 0);
+      } finally {
+        await db?.close();
       }
     });
   });

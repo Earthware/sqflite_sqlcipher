@@ -1,19 +1,15 @@
 import 'dart:async';
 
-import 'package:sqflite/src/compat.dart';
-import 'package:sqflite/src/constant.dart';
-import 'package:sqflite/src/factory_impl.dart' show databaseFactory;
-import 'package:sqflite/src/sqflite_impl.dart';
-import 'package:sqflite/src/utils.dart' as impl;
-import 'package:sqflite/utils/utils.dart' as utils;
+import 'package:sqflite_sqlcipher/src/sqflite_import.dart' as impl;
+import 'package:sqflite_common/utils/utils.dart' as utils;
+import 'package:sqflite_sqlcipher/sqlite_api.dart';
+import 'package:sqflite_sqlcipher/src/factory_sql_cipher_impl.dart'
+    show databaseFactory;
+import 'package:sqflite_sqlcipher/src/sqflite_import.dart';
+import 'package:sqflite_sqlcipher/src/sqflite_sql_cipher_impl.dart';
 
-import 'sqlite_api.dart';
-
-export 'package:sqflite/sql.dart' show ConflictAlgorithm;
-export 'package:sqflite/src/compat.dart';
-export 'package:sqflite/src/constant.dart'
-    show sqfliteLogLevelNone, sqfliteLogLevelSql, sqfliteLogLevelVerbose;
-export 'package:sqflite/src/factory_impl.dart' show databaseFactory;
+export 'package:sqflite_sqlcipher/src/factory_sql_cipher_impl.dart'
+    show databaseFactory;
 
 export 'sqlite_api.dart';
 
@@ -23,6 +19,8 @@ export 'sqlite_api.dart';
 class Sqflite {
   //static MethodChannel get _channel => channel;
 
+  /// deprecated
+  @deprecated
   static Future<String> get platformVersion =>
       invokeMethod<String>(methodGetPlatformVersion);
 
@@ -47,15 +45,9 @@ class Sqflite {
     return setDebugModeOn(on);
   }
 
-  // Testing only
-  /// deprecated on purpose to remove from code.
   @deprecated
-  static Future<void> devSetOptions(SqfliteOptions options) async {
-    await invokeMethod<dynamic>(methodOptions, options.toMap());
-  }
 
-  // Testing only
-  @deprecated
+  /// Testing only
   static Future<void> devInvokeMethod(String method,
       [dynamic arguments]) async {
     await invokeMethod<dynamic>(method, arguments);
@@ -67,12 +59,13 @@ class Sqflite {
       utils.firstIntValue(list);
 
   /// Utility to encode a blob to allow blow query using
-  /// "hex(blob_field) = ?", Sqlite.hex([1,2,3])
+  /// 'hex(blob_field) = ?', Sqlite.hex([1,2,3])
   static String hex(List<int> bytes) => utils.hex(bytes);
 
   /// Sqlite has a dead lock warning feature that will print some text
   /// after 10s, you can override the default behavior
-  static void setLockWarningInfo({Duration duration, void callback()}) {
+  static void setLockWarningInfo(
+      {Duration duration, void Function() callback}) {
     utils.setLockWarningInfo(duration: duration, callback: callback);
   }
 }
@@ -139,7 +132,7 @@ Future<Database> openDatabase(String path,
     String password,
     bool readOnly = false,
     bool singleInstance = true}) {
-  final OpenDatabaseOptions options = OpenDatabaseOptions(
+  final options = SqlCipherOpenDatabaseOptions(
       version: version,
       onConfigure: onConfigure,
       onCreate: onCreate,

@@ -9,8 +9,10 @@ import 'package:meta/meta.dart';
 
 /// An exception thrown when a test assertion fails.
 class TestFailure {
+  /// An exception thrown when a test assertion fails.
   TestFailure(this.message);
 
+  /// Exception message
   final String message;
 
   @override
@@ -19,7 +21,7 @@ class TestFailure {
 
 /// The type used for functions that can be used to build up error reports
 /// upon failures in [expect].
-@Deprecated("Will be removed in 0.13.0.")
+@Deprecated('Will be removed in 0.13.0.')
 typedef ErrorFormatter = String Function(dynamic actual, Matcher matcher,
     String reason, Map matchState, bool verbose);
 
@@ -96,7 +98,7 @@ Future _expect(actual, matcher,
   };
 
   if (skip != null && skip is! bool && skip is! String) {
-    throw ArgumentError.value(skip, "skip", "must be a bool or a String");
+    throw ArgumentError.value(skip, 'skip', 'must be a bool or a String');
   }
 
   matcher = wrapMatcher(matcher);
@@ -117,22 +119,24 @@ Future _expect(actual, matcher,
 @alwaysThrows
 void fail([String message]) => throw TestFailure(message ?? 'should fail');
 
+/// index text helper.
 String indent(String text, {String first}) {
   if (first != null) {
-    return "$first $text";
+    return '$first $text';
   }
-  return "$text";
+  return '$text';
 }
 
+/// index text helper.
 String prettyPrint(dynamic text, {String first}) {
   if (first != null) {
-    return "$first $text";
+    return '$first $text';
   }
-  return "$text";
+  return '$text';
 }
 
-// The default error formatter.
-@Deprecated("Will be removed in 0.13.0.")
+/// The default error formatter.
+@Deprecated('Will be removed in 0.13.0.')
 String formatFailure(Matcher expected, actual, String which, {String reason}) {
   var buffer = StringBuffer();
   buffer.writeln(indent(prettyPrint(expected), first: 'Expected: '));

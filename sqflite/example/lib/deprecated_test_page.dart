@@ -1,7 +1,9 @@
 import 'test_page.dart';
 
+/// Deprecated test page.
 class DeprecatedTestPage extends TestPage {
-  DeprecatedTestPage() : super("Deprecated tests") {
+  /// Deprecated test page.
+  DeprecatedTestPage() : super('Deprecated tests') {
     test('None', () async {});
   }
 }
